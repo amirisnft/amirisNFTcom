@@ -1,0 +1,255 @@
+## this is a comment 
+
+
+
+## amiris.nft htaccess file 
+
+
+
+
+
+## Disable caching 
+<IfModule mod_cache.c> 
+	CacheDisable on 
+</IfModule> 
+<IfModule mod_file_cache.c> 
+	FileETag None 
+	Header unset ETag 
+	Header set Cache-Control "max-age=0, no-cache, no-store, must-revalidate" 
+	Header set Pragma "no-cache" 
+	Header set Expires "Thu, 1 Jan 1970 00:00:00 GMT" 
+</IfModule> 
+
+
+<IfModule mod_rewrite.c> 
+
+	## module for blocking access to certain files and file types \ 
+	## that pose a security risk when breached \ 
+	## + block access to certain URLs \ 
+	## or \ 
+	## files such as: \ 
+	## config.inc.php as example \ 
+	## purposely sends user a 403 error to deny 
+
+	<FilesMatch "(\.(bak|php|inc|sql|json|js|jsx|vue|mjs|cjs|ts|swp|fla|psd|dist)|~)$"> 
+		Order allow,deny 
+		Deny from all 
+		Satisfy All 
+	</FilesMatch> 
+
+	RewriteEngine On 
+
+	## Module for redirecting to HTTPS 
+	RewriteCond %{HTTPS} off 
+		RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301] 
+
+
+## Rewrite ACCESS DENIED by hosting :( boo \ 
+## must perform IP ranges to suffice hosting and OFAC \ 
+## because you lack access to where the rewrite is rewriting to 
+
+	## USA OFAC compliance list as of April 2023 \ 
+	## COUNTRY_CODE PS BlockCountry (Palestine if/when sanctioned) \ 
+	## COUNTRY CODE CN BlockCountry (China if/when sanctioned) \ 
+	## Block access from certain countries 
+	RewriteCond %{ENV:IP2LOCATION_COUNTRY_SHORT} ^(KP|SY|AF|IQ|IR|LY|ET|LB|YE|SD|CF|CD|ZW|SO|UA|RU|BY|BA|XK|RS|MK|ME|VE|CU|MM)$ 
+	RewriteRule ^ - [F] 
+
+	## Module for blocking access to certain URLs 
+	RewriteCond %{SCRIPT_FILENAME} -d [OR] 
+	RewriteCond %{SCRIPT_FILENAME} -f 
+
+	RewriteRule "(^|/)\." - [F] 
+	RedirectMatch 404 /\..*$ 
+
+
+</IfModule> 
+
+
+## optimize the images to improve performance 
+<IfModule mod_setenvif.c> 
+	SetEnvIf Request_URI "\.(bmp|cur|gif|ico|jpe?g|a?png|svg|svgz?|webp|heic|heif|avif)$" optimize-images 
+</IfModule> 
+
+
+## for testing purposes setting all to 1 hour \ 
+## update when ready for final production deploy \ 
+## header imbedded to be separate \ 
+## under the \ 
+## mod_expires \ 
+## AND \ 
+## FilesMatch \ 
+## conditions \ 
+## 2nd in line \ 
+## removed unused file extensions \ 
+## flv | mp3 | mp4 | pdf | swf \ 
+## consider in future: \ 
+## txt|xml|md|csv|json|js|jsx|vue|mjs|cjs|ts \ 
+## ini|php|php3|php4|php5|php7|php8|sql \ 
+## pdf | ttf | ttc | otf | eot | woff | woff2 | psd 
+<IfModule mod_expires.c> 
+
+	<FilesMatch "\.(log|inc|txt|htm|html|css|ico|jpg|png|gif|svg|dist)$"> 
+		<IfModule mod_headers.c> 
+			FileETag None 
+			Header unset ETag 
+			Header unset Pragma 
+			Header unset Cache-Control 
+			Header unset Last-Modified 
+			Header set Pragma "no-cache" 
+			Header set Cache-Control "max-age=0, no-cache, no-store, must-revalidate" 
+			Header set Expires "Thu, 1 Jan 1970 00:00:00 GMT" 
+		</IfModule> 
+	</FilesMatch> 
+
+</IfModule> 
+
+
+## include all file extensions being used to \ 
+## HTTP request to GET \ 
+## side note that I removed jpeg file extension 
+<IfModule mod_authz_host.c> 
+	<FilesMatch "\.(html|css|jpg|gif)$"> 
+		<LimitExcept GET HEAD> 
+			Deny from all 
+		</LimitExcept> 
+		Order allow,deny 
+		Allow from all 
+	</FilesMatch> 
+	<Limit POST PUT DELETE> 
+		Deny from all 
+	</Limit> 
+</IfModule> 
+
+
+## block users from browsing folders 
+<IfModule mod_autoindex.c> 
+	Options -Indexes -Includes -FollowSymLinks -MultiViews 
+</IfModule> 
+
+
+## remove PHP from executing 
+<IfModule mod_php.c> 
+	RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8 
+	RemoveType .php .phtml .php3 .php4 .php5 .php7 .php8 
+</IfModule> 
+
+
+## LINK 2 of 1 \ 
+## 1st stop the scripts from executing \ 
+## turns files into text/plain \ 
+## may need to test production deployment of these: \ 
+## FYI disabling ini files will affect PHP also \ 
+## in the future u might want to enable \ 
+## md aka Markdown files which are plain text anyway 
+<IfModule mod_headers.c> 
+	<FilesMatch "\.(txt|tex|xml|mp3|mp4|flv|swf|md|log|csv|json|js|jsx|vue|mjs|cjs|ts|py|rb|ini|php|php3|php4|php5|php7|php8|sql|java|ear|war|jar|pl|groovy|lua|aux|pdf|old)$"> 
+		Header set Content-Type text/plain 
+	</FilesMatch> 
+</IfModule> 
+
+## LINK 2 of 2 \ 
+## 2nd render the files as plain text \ 
+## returns MIME type \ 
+## for the browser to read files as text/plain 
+<IfModule mod_mime.c> 
+	AddType text/plain .json .js .jsx .vue .mjs .cjs .ts .xml .md .aux .tex .csv .log .php .php3 .php4 .php5 .php7 .php8 .sql .pl .py .rb .java .ear .war .jar .lua .groovy 
+	AddDefaultCharset UTF-8 
+	AddCharset UTF-8 .html .css 
+	<FilesMatch "\.(html|css)$"> 
+		ForceType 'text/html; charset=UTF-8' 
+	</FilesMatch> 
+</IfModule> 
+
+
+## combined code blocks \ 
+## 1st ordering \ 
+## security-related code before functionality-related code \ 
+## 1st in line \ 
+## set to self \ 
+## scripts none \ 
+## upgrade-insecure-requests \ 
+## for production Strict-Transport-Security max-age=7776000 aka 90 days \ 
+## max-age=3600 for testing \ 
+## is for testing in 1 hour intervals \ 
+## while max-age=63072000 \ 
+## is for production deployment: max 2 years \ 
+## 2nd and 3rd in line \ 
+## max-age=3600 \ 
+## is for testing in 1 hour intervals \ 
+## while max-age=63072000 \ 
+## is for production deployment: max 2 years \ 
+## no-referrer \ 
+## MIME type control turning js e.g. into a html file \ 
+## XSS mitigation \ 
+## prevent FRAMES \ 
+## also prevents clickjacking \ 
+## frame-ancestors 'none' \ 
+## X-Frame-Options \ 
+## only allow fullscreen permission for the self origin \ 
+## all others are blocked \ 
+## DISABLE cache \ 
+## Timing-Allow-Origin may impact reading of site analytics \ 
+## denies all except for CSS \ 
+## "$1" allows for more flexibility rather than strictly the URL w/o \ 
+## update IS_CORS later to \ 
+## enable other origins to display \ 
+## as this prevents hotlinking of images \ 
+## when ready \ 
+## OR \ 
+## when needing to call from IPFS \ 
+## update later to same-origin if linking to IPFS 
+<IfModule mod_headers.c> 
+	Header always set Strict-Transport-Security "max-age=7776000; includeSubDomains; preload" 
+
+	Header always set Content-Security-Policy "img-src 'self'; upgrade-insecure-requests; frame-ancestors 'none'; script-src 'none'; object-src 'none'; child-src 'none';" 
+
+	Header always set X-Frame-Options "deny" 
+	Header set X-XSS-Protection "1; mode=block" 
+	Header set X-Content-Type-Options nosniff 
+
+## "strict-origin-when-cross-origin" was changed to "same-origin" making more strict 
+	Header set Referrer-Policy "same-origin" 
+	Header always set Referrer-Policy "no-referrer" 
+	Header set Expect-CT "enforce, max-age=3600"
+
+	Header always set Permissions-Policy "geolocation=(), payment=(), midi=(), autoplay=(), layout-animations=(), sync-xhr=(), ambient-light-sensor=(), accelerometer=(), gyroscope=(), magnetometer=(), battery=(), microphone=(), speaker-selection=(), camera=(), document-domain=(), execution-while-not-rendered=(), execution-while-out-of-viewport=(), idle-detection=(), fullscreen=(self)" 
+	Header always append Permissions-Policy "geolocation=(), payment=(), midi=(), autoplay=(), layout-animations=(), sync-xhr=(), ambient-light-sensor=(), accelerometer=(), gyroscope=(), magnetometer=(), battery=(), microphone=(), speaker-selection=(), camera=(), document-domain=(), execution-while-not-rendered=(), execution-while-out-of-viewport=(), idle-detection=(), fullscreen=(self)" 
+
+	Header always set Clear-Site-Data "cache" 
+	Header always set Cache-Control "no-cache, no-store, must-revalidate" 
+	Header always set Pragma "no-cache" 
+	Header always set Expires 0 
+	Header set Cache-Control "max-age=3600, public" 
+	Header always set Access-Control-Allow-Origin "deny" 
+	Header set Timing-Allow-Origin "self" 
+
+	<FilesMatch "\.(html|css)$"> 
+		Header always set Cache-Control "no-store, private" 
+		Header set Access-Control-Allow-Origin "https://amirisnft.com$1" 
+		Header set Content-Type "text/html; charset=UTF-8" 
+	</FilesMatch> 
+
+	<FilesMatch "\.(ttf|ttc|otf|eot|woff|woff2|js|xml|mp3|mp4|flv|swf|md|json|js|jsx|vue|mjs|cjs|ts|py|rb|ini|php|php3|php4|php5|php7|php8|sql|java|ear|war|jar|pl|groovy|lua|pdf)$"> 
+		Header set Access-Control-Allow-Origin "deny" 
+	</FilesMatch> 
+
+
+</IfModule> 
+
+
+## DoS DDos mitigation update \ 
+## Limit number of concurrent connections per IP address 
+<IfModule mod_limitipconn.c> 
+	<Location "/"> 
+	## Adjust the limit as needed \ 
+	## set maximum connections allowed from a single IP address 
+		MaxConnPerIP 5 
+	</Location> 
+</IfModule> 
+
+
+
+
+
+## END 
